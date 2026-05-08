@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user with role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Good": {
+      "title": "Good",
+      "description": "A calculation item for a Kaspi seller",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "price1688": { "type": "number" },
+        "weight": { "type": "number" },
+        "chinaDelivery": { "type": "number" },
+        "qty": { "type": "number" },
+        "kaspiPrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["potential", "dead"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "status", "createdAt"]
+    },
+    "Calendar": {
+      "title": "Calendar",
+      "description": "User's 20-day payment acceptance plan",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "familiars": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "number": { "type": "string" }
+            }
+          }
+        },
+        "days": {
+          "type": "array",
+          "items": {
+             "type": "object",
+             "properties": {
+               "index": { "type": "number" },
+               "familiars": { "type": "array" },
+               "strangers": { "type": "array" }
+             }
+          }
+        },
+        "startDate": { "type": "string" }
+      },
+      "required": ["userId", "days"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "goods/{goodId}": {
+      "schema": "Good",
+      "description": "Calculation records"
+    },
+    "calendars/{userId}": {
+      "schema": "Calendar",
+      "description": "Payment plan data"
+    },
+    "settings/{userId}": {
+      "schema": {
+        "title": "Settings",
+        "description": "Global calculator settings for user",
+        "type": "object",
+        "properties": {
+          "cargo": { "type": "number" },
+          "nds": { "type": "number" },
+          "kaspiTax": { "type": "number" },
+          "ip": { "type": "number" },
+          "usd": { "type": "number" },
+          "cny": { "type": "number" }
+        }
+      },
+      "description": "Persisted calculator constants"
+    }
+  }
+}

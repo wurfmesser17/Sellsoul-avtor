@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // We check for the specific admin email as a bootstrap, 
+    // then fall back to the "role" field in the users collection.
+    function isAdmin() {
+      let isBootstrapAdmin = request.auth.token.email == 'browgaming1@gmail.com';
+      let hasAdminRole = exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && (isBootstrapAdmin || hasAdminRole);
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- USERS ---
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Allow user to create their own profile. 
+      // Admin role can only be set if the email matches the bootstrap admin.
+      allow create: if isOwner(userId) && (
+        request.resource.data.role == 'user' || 
+        (request.resource.data.role == 'admin' && request.auth.token.email == 'browgaming1@gmail.com')
+      );
+      
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+    }
+
+    // --- GOODS ---
+    match /goods/{goodId} {
+      function isValidGood(data) {
+        return data.userId == request.auth.uid &&
+               data.name is string && data.name.size() <= 200 &&
+               data.status in ['potential', 'dead'] &&
+               data.price1688 is number &&
+               data.weight is number &&
+               data.qty is number;
+      }
+
+      // Secure list and get
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isEmailVerified() && isValidGood(request.resource.data);
+      
+      allow update: if isEmailVerified() && (resource.data.userId == request.auth.uid || isAdmin()) &&
+                    isValidGood(request.resource.data);
+                    
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // --- SETTINGS ---
+    match /settings/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isEmailVerified() && isOwner(userId);
+    }
+
+    // --- CALENDAR ---
+    match /calendars/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isEmailVerified() && isOwner(userId);
+    }
+
+    // --- CHATS ---
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isEmailVerified() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+  }
+}
