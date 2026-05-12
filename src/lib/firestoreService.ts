@@ -195,3 +195,40 @@ export async function addChatMessage(userId: string, role: 'user' | 'model', tex
     handleFirestoreError(error, OperationType.CREATE, path);
   }
 }
+// USERS (Admin)
+export async function registerUserProfile(userId: string, email: string) {
+  try {
+    await setDoc(doc(db, 'users', userId), {
+      email,
+      userId,
+      blocked: false,
+      createdAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}`);
+  }
+}
+
+export function subscribeToAllUsers(callback: (users: any[]) => void) {
+  return onSnapshot(collection(db, 'users'), (snapshot) => {
+    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(users);
+  });
+}
+
+export async function blockUser(userId: string) {
+  await updateDoc(doc(db, 'users', userId), { blocked: true });
+}
+
+export async function unblockUser(userId: string) {
+  await updateDoc(doc(db, 'users', userId), { blocked: false });
+}
+
+export async function deleteUserProfile(userId: string) {
+  await deleteDoc(doc(db, 'users', userId));
+}
+
+export async function isUserBlocked(userId: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, 'users', userId));
+  return snap.exists() ? snap.data().blocked === true : false;
+}
