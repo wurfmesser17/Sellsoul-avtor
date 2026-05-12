@@ -1,9 +1,19 @@
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'motion/react';
 import { LogIn } from 'lucide-react';
+import { auth } from '../../lib/firebase';
+import { registerUserProfile } from '../../lib/firestoreService';
 
 export function Login() {
   const { login } = useAuth();
+
+  const handleLogin = async () => {
+    await login();
+    const user = auth.currentUser;
+    if (user) {
+      await registerUserProfile(user.uid, user.email || '');
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white p-6 font-sans">
@@ -22,7 +32,7 @@ export function Login() {
 
         <div className="space-y-6">
           <button
-            onClick={login}
+            onClick={handleLogin}
             className="group flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-brand-ink bg-white px-6 py-4 text-sm font-bold transition-all hover:bg-brand-ink hover:text-white"
           >
             <LogIn size={20} className="group-hover:translate-x-1 transition-transform" />
